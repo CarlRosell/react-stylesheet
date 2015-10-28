@@ -2,10 +2,10 @@
  * @copyright 2015 Prometheus Research, LLC
  */
 
-import React, {PropTypes}       from 'react';
-import cx                       from 'classnames';
-import getComponentDisplayName  from './getComponentDisplayName';
-import Style                    from './Style';
+import React, {PropTypes} from 'react';
+import cx from 'classnames';
+import getComponentDisplayName from './getComponentDisplayName';
+import * as DOMStylesheet from './DOMStylesheet';
 
 export default class StyleableDOMComponent extends React.Component {
 
@@ -19,15 +19,11 @@ export default class StyleableDOMComponent extends React.Component {
     className: PropTypes.string,
   };
 
-  static style(stylesheet, Component = this.Component, name = null) {
-    let displayName = getComponentDisplayName(Component);
-    if (!Style.is(stylesheet)) {
-      stylesheet = Style.create(stylesheet, name || displayName);
-    }
+  static style(spec) {
     return class extends StyleableDOMComponent {
-      static displayName = `StyleableDOMComponent(${displayName})`;
-      static Component = Component;
-      static stylesheet = stylesheet;
+      static displayName = getComponentDisplayName(this);
+      static Component = this.Component;
+      static stylesheet = DOMStylesheet.overrideStylesheet(this.stylesheet, spec);
     };
   }
 

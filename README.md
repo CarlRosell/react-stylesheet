@@ -3,32 +3,82 @@ React Stylesheet
 
 [![Travis build status](https://img.shields.io/travis/prometheusresearch/react-stylesheet/master.svg)](https://travis-ci.org/prometheusresearch/react-stylesheet)
 
-React Stylesheet is a methodology (and a library) for styling React components.
+React Stylesheet is a way to style React components with... React components!
 
-The main principle of React Stylesheet is that all styling should be done with
-React components alone.
+## Installation
 
-DOM components are styled with CSS and composite components are styled with
-stylesheets (which are just sets of other components).
+```
+% npm install @prometheusresearch/react-stylesheet
+```
 
-Let's define `<Button />` component which is styled using React Stylesheet.
+## Basic usage
+
+The idea is that component should define a stylesheet to render its UI with.
+
+A stylesheet is just a collection of React components. You ask what React
+Stylesheet does for you then? It allows to define styled DOM components with
+an easy API:
 
 ```javascript
 import React from 'react'
-import ReactStylesheet from '@prometheusresearch/react-stylesheet'
-import Icon from 'react-fa'
+import {createStylesheet} from '@prometheusresearch/react-stylesheet'
 
-@ReactStylesheet
+let stylesheet = createStylesheet({
+  Root: { // generates <button /> with CSS class applied
+    Component: 'button',
+    fontSize: '12pt'
+  },
+  Caption: { // generates <button /> with CSS class applied
+    Component: 'div',
+    fontWeight: 'bold',
+    hover: { // yes, pseudo classes are supported
+      color: 'red'
+    }
+  }
+})
+```
+
+Now we can define our component in terms of the stylesheet:
+
+```javascript
 class Button extends React.Component {
 
-  static stylesheet = {
-    Root: 'button',
-    Icon: Icon,
+  render() {
+    let {caption} = this.props
+    let {Root, Icon} = stylesheet
+    return (
+      <Root>
+        <Caption>{caption}</Caption>
+      </Root>
+    )
   }
+}
+```
+
+## Stylable composite components
+
+Sometimes you want to define a reusable component which you would want to style
+later using different stylesheets.
+
+You can define an initial stylesheet which does nothing but renders base DOM
+components and then override that:
+
+```javascript
+import React from 'react'
+import {attachStylesheet} from '@prometheusresearch/react-stylesheet'
+import Icon from 'react-fa'
+
+let stylesheet = {
+  Root: 'button',
+  Icon: Icon,
+};
+
+@attachStylesheet(stylesheet)
+class Button extends React.Component {
 
   render() {
     let {caption, icon} = this.props
-    let {Root, Icon} = this.stylesheet
+    let {Root, Icon} = this.props.stylesheet
     return (
       <Root>
         <Icon name={icon} />
@@ -41,19 +91,18 @@ class Button extends React.Component {
 
 What we did here is:
 
-* We use `ReactStylesheet` [higher order component][] to mark out component as
-  being styleable.
+* We use `attachStylesheet` [higher order component][] to attach an initial
+  stylesheet to a composite component.
 
-* We use `stylesheet` static attribute to define the stylsheet of the
-  component.
-
-* We reference components via `this.stylesheet` in `render()`.
+* We use `stylesheet` prop passed to component to render component's UI.
 
 Now the only part left is to produce a version of `<Button />` with different
-styling. We use `style()` static method for that:
+styling. We use `styleComponent(Component, stylesheet)` function for that:
 
 ```javascript
-let SuccessButton = Button.style({
+import {styleComponent} from '@prometheusresearch/react-stylesheet'
+
+let SuccessButton = styleComponent(Button, {
   Root: {
     color: 'white',
     backgroundColor: 'green',
@@ -67,28 +116,29 @@ let SuccessButton = Button.style({
 })
 ```
 
-We pass `style()` a stylesheet which is merged into the original one:
+We pass `styleComponent()` a stylesheet which is merged into the original one:
 
-* If you pass a component (`Icon` in the example above, it's a function but with
-  React >= 0.14 it's a valid component also) it is used instead of the original
-  one.
+* If you pass a component (`Icon` in the example above) it is used instead of
+  the original one.
 
 * If you pass an object:
 
   * If it overrides DOM component in the original stylesheet, then the object is
-    treated as a set of CSS styles.  It's compiled to CSS class and a new styled
+    treated as a set of CSS styles. It's compiled to CSS class and a new styled
     DOM component wrapper is generated with the CSS class attached.
 
-  * If it overrides composite styleable component in the original stylesheet, then it's
-    passed to that's component `style()` static method.
+  * If it overrides composite component in the original stylesheet, then it's
+    being used to style this component with recursive `styleComponent` function
+    call.
 
 The last point allows to style component hierarchies with easy:
 
 ```javascript
-let StyledForm = Form.style({
+let StyledForm = styleComponent(Form, {
   Root: {
     ...
   },
+  // this is the same as calling styleComponent(SubmitButton, { ... })
   SubmitButton: {
     Root: {
       ...
@@ -102,15 +152,12 @@ let StyledForm = Form.style({
 
 ## Styled DOM components
 
-When you override DOM components in stylesheet by providing an object literal
-with CSS rules then the new styled DOM component is created.
-
-Another way to create styled DOM components is to use `style` function:
+You can also produce styled DOM components with `styleComponent` function:
 
 ```javascript
-import {style} from '@prometheusresearch/react-stylesheet'
+import {styleComponent} from '@prometheusresearch/react-stylesheet'
 
-let StyledDiv = style('div', {
+let StyledDiv = styleComponent('div', {
   color: 'red'
 })
 
@@ -137,7 +184,9 @@ DOM components are mounted into the DOM.
 Styled DOM components are allowed to have states:
 
 ```javascript
-let StyledDiv = style('div', {
+import {styleComponent} from '@prometheusresearch/react-stylesheet'
+
+let StyledDiv = styleComponent('div', {
   color: 'red',
   hover: {
     color: 'black'
@@ -156,6 +205,21 @@ DOM components:
 
 ```javascript
 <StyledDiv state={{hover: false, active: true}} />
+```
+
+## Helpers for DOM stylesheets
+
+React Stylesheet provides helpers to define DOM stylesheets:
+
+```javascript
+import {styleComponent} from '@prometheusresearch/react-stylesheet'
+import {rgba, padding, none} from '@prometheusresearch/react-stylesheet/css'
+
+let Warning = styleComponent('div', {
+  color: rgba(245, 123, 12),
+  padding: padding(10, 20),
+  textDecoration: none,
+})
 ```
 
 ## Credits
